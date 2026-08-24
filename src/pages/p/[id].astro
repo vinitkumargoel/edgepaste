@@ -1,0 +1,295 @@
+---
+export const prerender = false;
+
+import Base from '../../layouts/Base.astro';
+import CenterCard from '../../components/CenterCard.astro';
+import ActionBar from '../../components/ActionBar.astro';
+import CodeCard from '../../components/CodeCard.astro';
+import QrModal from '../../components/QrModal.astro';
+import Icon from '../../components/Icon.astro';
+import { resolvePaste } from '../../lib/gauntlet';
+import { highlight } from '../../lib/highlight';
+import { incrementViews } from '../../lib/db';
+import { LANGUAGES } from '../../lib/validate';
+import { expiresIn, formatBytes, formatCount, humanAge } from '../../scripts/format';
+
+const id = Astro.params.id ?? '';
+const now = Math.floor(Date.now() / 1000);
+
+/**
+ * waitUntil, defensively: @astrojs/cloudflare v14 exposes `locals.cfContext`,
+ * older builds exposed `locals.runtime.ctx`, and the dev server has neither.
+ */
+function makeWaitUntil(locals: unknown): (p: Promise<unknown>) => void {
+  const bag = locals as {
+    runtime?: { ctx?: { waitUntil?: (p: Promise<unknown>) => void } };
+    cfContext?: { waitUntil?: (p: Promise<unknown>) => void };
+  } | null;
+  return (promise: Promise<unknown>): void => {
+    const safe = promise.catch(() => {});
+    try {
+      const modern = bag?.cfContext;
+      if (typeof modern?.waitUntil === 'function') {
+        modern.waitUntil(safe);
+        return;
+      }
+    } catch {
+      /* fall through to the legacy probe */
+    }
+    try {
+      // Adapter v14's deprecated `runtime.ctx` getter THROWS (removal trap) —
+      // probe it last and only inside this guard.
+      const legacy = bag?.runtime?.ctx;
+      if (typeof legacy?.waitUntil === 'function') {
+        legacy.waitUntil(safe);
+        return;
+      }
+    } catch {
+      /* no execution context (dev) — the fire-and-forget promise still runs */
+    }
+  };
+}
+const waitUntil = makeWaitUntil(Astro.locals);
+
+// The burn claim happens only on POST /p/:id with action=burn — never on GET,
+// so link previews and crawlers can't torch a paste.
+let claimBurn = false;
+if (Astro.request.method === 'POST') {
+  try {
+    const form = await Astro.request.formData();
+    claimBurn = form.get('action') === 'burn';
+  } catch {
+    claimBurn = false;
+  }
+}
+
+const resolution = await resolvePaste(id, { claimBurn, waitUntil, request: Astro.request });
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+if (resolution.status === 'not_found') Astro.response.status = 404;
+else if (resolution.status === 'gone') Astro.response.status = 410;
+else if (resolution.status === 'locked') Astro.response.status = 403;
+else if (resolution.status === 'burn_pending') Astro.response.status = 409;
+
+// Only a plain (non-burn) successful read counts as a view.
+if (resolution.status === 'ok' && !claimBurn) waitUntil(incrementViews(id));
+
+const meta = resolution.status === 'locked' || resolution.status === 'burn_pending' || resolution.status === 'ok'
+  ? resolution.meta
+  : null;
+
+const encrypted = meta?.is_encrypted === 1;
+const destroyed = resolution.status === 'ok' && claimBurn;
+const languageLabel = LANGUAGES.find((l) => l.id === meta?.language)?.label ?? meta?.language ?? 'Plain text';
+const heading = meta?.title ?? null;
+
+// highlight() only runs for plaintext bodies; encrypted ones stay opaque here.
+const rendered =
+  resolution.status === 'ok' && !encrypted ? await highlight(resolution.content, meta!.language) : null;
+
+// Embed the envelope for the client decryptor. Escaping `<` keeps a hostile
+// body from closing the script tag and stays valid JSON either way.
+const envelopeJson =
+  resolution.status === 'ok' && encrypted ? resolution.content.replace(/</g, '\\u003c') : null;
+
+const views = meta ? meta.view_count + (resolution.status === 'ok' ? 1 : 0) : 0;
+const pageTitle =
+  resolution.status === 'ok' || resolution.status === 'locked' || resolution.status === 'burn_pending'
+    ? `${heading ?? id} — edgepaste`
+    : resolution.status === 'gone'
+      ? 'Gone — edgepaste'
+      : 'Not found — edgepaste';
+---
+
+<Base title={pageTitle} description="A paste on edgepaste.">
+  {
+    resolution.status === 'not_found' && (
+      <CenterCard icon="search" heading="No paste here">
+        <p>
+          Nothing is stored under <span class="mono">{id}</span>. Links are case-sensitive — check the
+          last few characters, or start a fresh paste.
+        </p>
+        <div class="row">
+          <a class="btn btn-primary" href="/">
+            <Icon name="plus" />New paste
+          </a>
+        </div>
+        <p class="card-foot">404 · nothing was ever here, or it has already been swept</p>
+      </CenterCard>
+    )
+  }
+
+  {
+    resolution.status === 'gone' && (
+      <CenterCard icon={claimBurn ? 'flame' : 'clock'} heading={claimBurn ? 'Already burned' : 'This paste is gone'} tone="danger">
+        {claimBurn ? (
+          <p>
+            Someone opened this burn-after-reading paste before you did, so it was destroyed. There is
+            no copy left — not on our side, not anywhere.
+          </p>
+        ) : (
+          <p>
+            It expired, or it was a burn-after-reading paste that has already been opened. Either way
+            the body and its metadata are deleted.
+          </p>
+        )}
+        <div class="row">
+          <a class="btn btn-primary" href="/">
+            <Icon name="plus" />New paste
+          </a>
+          <a class="btn btn-quiet" href="/recent">
+            <Icon name="clock" />Recent
+          </a>
+        </div>
+        <p class="card-foot">410 · gone for good</p>
+      </CenterCard>
+    )
+  }
+
+  {
+    resolution.status === 'locked' && (
+      <CenterCard icon="lock" heading="This paste is protected">
+        <p>
+          Enter the password to view <span class="mono">{heading ?? id}</span>. It was set by whoever
+          created the paste — edgepaste can't recover it.
+        </p>
+        <form id="gate-form" data-paste-id={id}>
+          <label class="vh" for="gate-password">
+            Password
+          </label>
+          <input
+            class="input mono"
+            id="gate-password"
+            type="password"
+            autocomplete="current-password"
+            placeholder="password"
+            maxlength="256"
+          />
+          <div class="row">
+            <button class="btn btn-primary" id="gate-submit" type="submit">
+              <Icon name="lock" />Unlock
+            </button>
+          </div>
+        </form>
+        <p class="notice err" id="gate-error" hidden role="alert">
+          <Icon name="alert" />
+          <span id="gate-error-text" />
+        </p>
+        <p class="card-foot">Protected with PBKDF2 — 5 attempts per minute</p>
+      </CenterCard>
+    )
+  }
+
+  {
+    resolution.status === 'burn_pending' && (
+      <CenterCard icon="flame" heading="This paste self-destructs" tone="danger">
+        <p>
+          It can be viewed exactly once. The moment you open it, it is permanently deleted for
+          everyone — including you and the person who created it.
+        </p>
+        <form method="POST">
+          <input type="hidden" name="action" value="burn" />
+          <div class="row">
+            <a class="btn btn-quiet" href="/">Not now</a>
+            <button class="btn btn-danger" type="submit">
+              <Icon name="flame" />View &amp; destroy
+            </button>
+          </div>
+        </form>
+        <p class="card-foot">Copy what you need before closing the tab — there is no second view</p>
+      </CenterCard>
+    )
+  }
+
+  {
+    resolution.status === 'ok' && meta && (
+      <div class="vw-main">
+        {destroyed && (
+          <p class="banner danger" role="status">
+            <Icon name="flame" />
+            This paste has now been destroyed — copy it before you close the tab
+          </p>
+        )}
+
+        <div class="vw-head">
+          <h1 class={heading ? 'mono' : ''}>{heading ?? <em>untitled</em>}</h1>
+          <div class="vw-meta">
+            <span class="chip lang">{languageLabel}</span>
+            {encrypted && (
+              <span class="chip ok">
+                <Icon name="shield" />
+                end-to-end encrypted
+              </span>
+            )}
+            {meta.burn_after_read === 1 && (
+              <span class="chip danger">
+                <Icon name="flame" />
+                burn after reading
+              </span>
+            )}
+            <span class="m">{formatBytes(meta.size_bytes)}</span>
+            {!encrypted && <span class="m">{formatCount(meta.line_count)} lines</span>}
+            <span class="m">
+              <Icon name="eye" />
+              {formatCount(views)}
+            </span>
+            <span class="m">
+              <Icon name="clock" />
+              {expiresIn(meta.expires_at, now)}
+            </span>
+          </div>
+        </div>
+
+        <ActionBar id={id} encrypted={encrypted} destroyed={destroyed} />
+
+        {encrypted ? (
+          <Fragment>
+            <div id="code-slot" />
+            <div class="enc-panel" id="enc-panel" hidden>
+              <div class="card-ic">
+                <Icon name="shield" class="ic-lg" />
+              </div>
+              <h2>Encrypted end to end</h2>
+              <p id="enc-hint-text">
+                This paste was encrypted in the creator's browser. The server only ever saw the
+                ciphertext.
+              </p>
+              <form class="row" id="enc-form">
+                <label class="vh" for="enc-secret" id="enc-secret-label">
+                  Passphrase
+                </label>
+                <input class="input mono" id="enc-secret" type="password" autocomplete="off" />
+                <button class="btn btn-primary" type="submit" id="enc-submit">
+                  <Icon name="key" />Decrypt
+                </button>
+              </form>
+              <p class="notice err" id="enc-error" hidden role="alert">
+                <Icon name="alert" />
+                <span id="enc-error-text" />
+              </p>
+            </div>
+            <script type="application/json" id="envelope" set:html={envelopeJson} />
+          </Fragment>
+        ) : (
+          <CodeCard html={rendered?.html ?? ''} lineCount={meta.line_count} />
+        )}
+
+        <p class="vw-foot">
+          created {humanAge(meta.created_at, now)} · {meta.visibility}
+          {meta.password_hash ? ' · password protected' : ''} · owner can delete with the token from
+          creation
+        </p>
+      </div>
+    )
+  }
+
+  <Fragment slot="below">
+    <QrModal />
+  </Fragment>
+
+  <script>
+    import '../../scripts/view.ts';
+    import '../../scripts/gate.ts';
+    import '../../scripts/decrypt.ts';
+  </script>
+</Base>

@@ -1,0 +1,119 @@
+---
+import Icon from './Icon.astro';
+import { LANGUAGES } from '../lib/validate';
+
+interface Props {
+  /** Language pre-selected on load (fork prefill overrides it client-side). */
+  language?: string;
+}
+
+const { language = 'plaintext' } = Astro.props;
+
+const EXPIRATIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'never', label: 'Never' },
+  { value: '10m', label: '10 minutes' },
+  { value: '1h', label: '1 hour' },
+  { value: '1d', label: '1 day' },
+  { value: '1w', label: '1 week' },
+  { value: '1mo', label: '1 month' },
+];
+---
+
+<aside class="ed-side" aria-label="Paste options">
+  <div class="field">
+    <label class="lbl" for="f-language">Language</label>
+    <div class="select-wrap">
+      <select class="select mono" id="f-language" name="language">
+        {
+          LANGUAGES.map((l) => (
+            <option value={l.id} selected={l.id === language}>
+              {l.label}
+            </option>
+          ))
+        }
+      </select>
+      <span class="car" aria-hidden="true">▼</span>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="lbl" for="f-expiration">Expires</label>
+    <div class="select-wrap has-ic">
+      <Icon name="clock" class="sel-ic" />
+      <select class="select" id="f-expiration" name="expiration">
+        {
+          EXPIRATIONS.map((e) => (
+            <option value={e.value} selected={e.value === '1d'}>
+              {e.label}
+            </option>
+          ))
+        }
+      </select>
+      <span class="car" aria-hidden="true">▼</span>
+    </div>
+  </div>
+
+  <div class="field" role="group" aria-labelledby="lbl-visibility">
+    <span class="lbl" id="lbl-visibility">Visibility</span>
+    <div class="seg2">
+      <label>
+        <input type="radio" name="visibility" value="unlisted" checked />
+        <Icon name="link" />
+        <span>Unlisted</span>
+      </label>
+      <label>
+        <input type="radio" name="visibility" value="public" />
+        <Icon name="globe" />
+        <span>Public</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="field" role="group" aria-labelledby="lbl-protection">
+    <span class="lbl" id="lbl-protection">Protection</span>
+    <div class="seg2">
+      <label><input type="radio" name="protection" value="none" checked /><span>None</span></label>
+      <label><input type="radio" name="protection" value="password" /><span>Password</span></label>
+      <label><input type="radio" name="protection" value="encrypt" /><span>Encrypt</span></label>
+    </div>
+  </div>
+
+  <div class="field" id="pw-field" hidden>
+    <label class="lbl" for="f-password">Password</label>
+    <input class="input mono" id="f-password" name="password" type="password" autocomplete="new-password" placeholder="••••••••" maxlength="256" />
+    <p class="side-hint">Hashed with PBKDF2 on the server. Readers need it to open the paste — we can't recover it.</p>
+  </div>
+
+  <div class="field" id="enc-field" hidden role="group" aria-labelledby="lbl-enckey">
+    <span class="lbl" id="lbl-enckey">Key</span>
+    <div class="seg2">
+      <label><input type="radio" name="enckey" value="random" checked /><span>Random key</span></label>
+      <label><input type="radio" name="enckey" value="passphrase" /><span>Passphrase</span></label>
+    </div>
+    <div id="enc-pass-wrap" hidden>
+      <input class="input mono" id="f-passphrase" type="password" autocomplete="new-password" placeholder="passphrase" style="margin-top:8px" />
+    </div>
+    <p class="side-hint" id="enc-hint">
+      Encrypted in your browser with AES-GCM. The key travels in the link fragment — it never reaches the server.
+    </p>
+  </div>
+
+  <label class="checkline">
+    <input type="checkbox" id="f-burn" name="burn_after_read" />
+    <span class="checkbox" aria-hidden="true"></span>
+    <Icon name="flame" class="burn-ic" />
+    Burn after reading
+  </label>
+
+  <p class="notice err" id="ed-error" hidden role="alert">
+    <Icon name="alert" />
+    <span id="ed-error-text"></span>
+  </p>
+
+  <button class="btn btn-primary" type="submit" id="f-create">
+    Create paste <kbd>⌘⏎</kbd>
+  </button>
+  <p class="side-hint">
+    You'll get a one-time delete token with the link — store it if you may want this gone later.
+  </p>
+</aside>

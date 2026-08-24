@@ -1,0 +1,20 @@
+---
+import Icon from './Icon.astro';
+
+/**
+ * The QR overlay. Markup only — src/scripts/qr.ts fills #qr-box with a uqr
+ * renderSVG() of whatever URL the trigger asks for and handles Esc / backdrop.
+ * Triggers are any element carrying `data-qr` (value = URL, empty = current URL).
+ */
+---
+
+<div class="overlay" id="qr-overlay" hidden data-qr-overlay>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="qr-title">
+    <button class="icon-btn modal-x" type="button" data-qr-close aria-label="Close">
+      <Icon name="close" />
+    </button>
+    <h2 id="qr-title">Scan to open</h2>
+    <div class="qr-box" id="qr-box"></div>
+    <p class="qr-url" id="qr-url"></p>
+  </div>
+</div>

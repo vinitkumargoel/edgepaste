@@ -1,0 +1,54 @@
+---
+import Icon from './Icon.astro';
+
+/**
+ * Shown in place of the editor after a successful POST /api/pastes.
+ * src/scripts/editor.ts fills the values in — the markup ships empty.
+ */
+---
+
+<section class="result" id="result" hidden aria-live="polite">
+  <div class="result-head">
+    <div class="card-ic ok"><Icon name="check" class="ic-lg" /></div>
+    <div>
+      <h2>Paste created</h2>
+      <p id="res-sub">Anyone with the link can open it.</p>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="lbl" for="res-url">Share link</label>
+    <div class="urlrow">
+      <input class="input mono" id="res-url" readonly value="" aria-label="Share link" />
+      <button class="btn btn-primary" type="button" data-copy="#res-url">
+        <Icon name="copy" />Copy
+      </button>
+    </div>
+  </div>
+
+  <p class="notice warn" id="res-keynote" hidden>
+    <Icon name="key" />
+    <span
+      >The decryption key lives in the <b>#fragment</b> of that link. Browsers never send it to the
+      server — share the whole link, or nobody can read the paste.</span
+    >
+  </p>
+
+  <div class="tokenbox">
+    <h3><Icon name="alert" />Delete token — shown once</h3>
+    <p>This is the only time you will see it. Store it now if you may want to delete this paste later.</p>
+    <div class="tokenval mono" id="res-token"></div>
+    <div>
+      <button class="btn btn-quiet" type="button" data-copy="#res-token">
+        <Icon name="copy" />Copy token
+      </button>
+    </div>
+  </div>
+
+  <div class="result-actions">
+    <a class="act primary" id="res-open" href="#"><Icon name="eye" />Open paste</a>
+    <a class="act" id="res-raw" href="#"><Icon name="raw" />Raw</a>
+    <button class="act" type="button" id="res-qr" data-qr=""><Icon name="qr" />QR</button>
+    <a class="act" href="/"><Icon name="plus" />New paste</a>
+  </div>
+</section>

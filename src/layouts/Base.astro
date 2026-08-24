@@ -1,0 +1,75 @@
+---
+import '../styles/global.css';
+import IconSymbols from '../components/IconSymbols.astro';
+import TopBar from '../components/TopBar.astro';
+
+interface Props {
+  /** Full <title> text. */
+  title: string;
+  /** <meta name="description">. */
+  description?: string;
+  /** Which top-nav item reads as current. */
+  nav?: 'new' | 'recent' | 'api' | null;
+}
+
+const {
+  title,
+  description = 'edgepaste — a fast pastebin on the edge. Syntax highlighting, expiry, burn-after-reading, password locks and end-to-end encryption.',
+  nav = null,
+} = Astro.props;
+
+const favicon =
+  "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%F0%9F%93%8B</text></svg>";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f7f5f0" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#131110" media="(prefers-color-scheme: dark)" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href={favicon} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+    {/* Pre-paint: light is the default, so only *add* the attribute for stored dark. */}
+    <script is:inline>
+      (function () {
+        try {
+          if (localStorage.getItem('ep-theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+          }
+        } catch (e) {
+          /* private mode / blocked storage: stay on the light default */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <IconSymbols />
+    <div class="stage">
+      <div class="app">
+        <TopBar nav={nav} />
+        <main id="main">
+          <slot />
+        </main>
+      </div>
+      <slot name="below" />
+    </div>
+    <script>
+      import '../scripts/theme.ts';
+      import '../scripts/clipboard.ts';
+    </script>
+  </body>
+</html>

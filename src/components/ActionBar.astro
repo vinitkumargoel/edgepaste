@@ -1,0 +1,74 @@
+---
+import Icon from './Icon.astro';
+
+interface Props {
+  id: string;
+  /** Encrypted pastes serve the envelope from /raw and /download — say so. */
+  encrypted?: boolean;
+  /** A just-burned paste is already deleted server-side: every link would 410. */
+  destroyed?: boolean;
+}
+
+const { id, encrypted = false, destroyed = false } = Astro.props;
+
+const rawTitle = encrypted
+  ? 'Raw serves the encrypted envelope JSON, not the plaintext'
+  : 'Open the plain-text body';
+const downloadTitle = encrypted
+  ? 'Downloads the encrypted envelope JSON, not the plaintext'
+  : 'Download this paste as a file';
+const goneTitle = 'This paste has been destroyed — only the copy on this page is left';
+---
+
+<div class="vw-actions">
+  <button class="act primary" type="button" data-copy-code><Icon name="copy" />Copy</button>
+
+  {
+    destroyed ? (
+      <Fragment>
+        <span class="act" aria-disabled="true" title={goneTitle}>
+          <Icon name="raw" />Raw
+        </span>
+        <span class="act" aria-disabled="true" title={goneTitle}>
+          <Icon name="down" />Download
+        </span>
+        <span class="act" aria-disabled="true" title={goneTitle}>
+          <Icon name="fork" />Fork
+        </span>
+        <span class="act" aria-disabled="true" title={goneTitle}>
+          <Icon name="qr" />QR
+        </span>
+        <span class="act" aria-disabled="true" title={goneTitle}>
+          <Icon name="link" />Copy link
+        </span>
+      </Fragment>
+    ) : (
+      <Fragment>
+        <a class="act" href={`/raw/${id}`} title={rawTitle}>
+          <Icon name="raw" />Raw
+        </a>
+        <a class="act" href={`/download/${id}`} title={downloadTitle}>
+          <Icon name="down" />Download
+        </a>
+        <a class="act" href={`/?fork=${id}`} data-fork title="Open a copy in the editor">
+          <Icon name="fork" />Fork
+        </a>
+        <button class="act" type="button" data-qr="">
+          <Icon name="qr" />QR
+        </button>
+        <button class="act" type="button" data-copy-url>
+          <Icon name="link" />Copy link
+        </button>
+      </Fragment>
+    )
+  }
+
+  <span class="spacer"></span>
+
+  <button class="mini-toggle" type="button" id="t-lines" aria-pressed="true">
+    <span class="sw on" aria-hidden="true"></span>lines
+  </button>
+  <button class="mini-toggle" type="button" id="t-wrap" aria-pressed="false">
+    <span class="sw" aria-hidden="true"></span>wrap
+  </button>
+</div>

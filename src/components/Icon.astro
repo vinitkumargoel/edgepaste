@@ -1,0 +1,17 @@
+---
+interface Props {
+  /** Symbol id without the `i-` prefix, e.g. "flame" -> #i-flame. */
+  name: string;
+  /** Extra classes appended to the base `ic` class. */
+  class?: string;
+  /** Rendered as an accessible label instead of aria-hidden when provided. */
+  label?: string;
+}
+
+const { name, class: cls = '', label } = Astro.props;
+---
+
+<svg class={`ic ${cls}`.trim()} role={label ? 'img' : undefined} aria-hidden={label ? undefined : 'true'} focusable="false">
+  {label && <title>{label}</title>}
+  <use href={`#i-${name}`} />
+</svg>

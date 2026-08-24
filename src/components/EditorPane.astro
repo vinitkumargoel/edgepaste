@@ -1,0 +1,50 @@
+---
+interface Props {
+  /** Byte cap surfaced in the stats strip. */
+  maxBytes: number;
+  /** Human label for the cap, e.g. "10 MB". */
+  maxLabel: string;
+}
+
+const { maxBytes, maxLabel } = Astro.props;
+---
+
+<div class="ed-left">
+  <div class="ed-head">
+    <input
+      class="title-input mono"
+      id="f-title"
+      name="title"
+      type="text"
+      maxlength="200"
+      placeholder="untitled"
+      aria-label="Paste title"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <span class="chip lang" id="lang-chip">Plain text</span>
+  </div>
+
+  <div class="editor">
+    <pre class="gutter" id="ed-gutter" aria-hidden="true">1</pre>
+    <textarea
+      class="ed-input"
+      id="f-content"
+      name="content"
+      wrap="off"
+      spellcheck="false"
+      autocapitalize="off"
+      autocorrect="off"
+      autocomplete="off"
+      aria-label="Paste content"
+      placeholder="Paste or type here…  ⌘/Ctrl + Enter to create"></textarea>
+  </div>
+
+  <div class="ed-stats" id="ed-stats" data-max-bytes={String(maxBytes)} aria-live="off">
+    <span id="st-lines">0 lines</span>
+    <span id="st-chars">0 chars</span>
+    <span id="st-bytes">0 B</span>
+    <div class="cap-bar"><i id="st-bar"></i></div>
+    <span>of {maxLabel}</span>
+  </div>
+</div>

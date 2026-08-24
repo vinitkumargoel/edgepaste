@@ -1,0 +1,29 @@
+{
+  "name": "edgepaste",
+  "version": "1.0.0",
+  "description": "Pastebin on the edge — Astro SSR on Cloudflare Workers, D1 metadata, R2 bodies",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "check": "tsc --noEmit",
+    "types": "wrangler types",
+    "preview": "astro build && wrangler dev",
+    "deploy": "astro build && wrangler deploy"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^14.2.3",
+    "astro": "^7.2.4",
+    "nanoid": "^5.0.0",
+    "shiki": "^3.0.0",
+    "uqr": "^0.1.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.6.0",
+    "vite": "^8.2.2",
+    "wrangler": "^4.125.0"
+  }
+}

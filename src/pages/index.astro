@@ -1,0 +1,57 @@
+---
+export const prerender = false;
+
+import Base from '../layouts/Base.astro';
+import EditorPane from '../components/EditorPane.astro';
+import OptionsPanel from '../components/OptionsPanel.astro';
+import ResultPanel from '../components/ResultPanel.astro';
+import QrModal from '../components/QrModal.astro';
+import Icon from '../components/Icon.astro';
+import { maxPasteBytes } from '../lib/validate';
+import { formatBytes } from '../scripts/format';
+
+const maxBytes = maxPasteBytes();
+const maxLabel = formatBytes(maxBytes);
+const origin = Astro.url.origin;
+
+const curl = `curl -sX POST ${origin}/api/pastes \\
+  -H 'content-type: application/json' \\
+  -d '{"content":"hello edge","language":"plaintext","expiration":"1d"}'`;
+---
+
+<Base title="edgepaste — paste it, share it, let it burn" nav="new">
+  <p class="notice ed-notice" id="fork-notice" hidden>
+    <Icon name="alert" />
+    <span id="fork-notice-text"></span>
+  </p>
+
+  <div class="ed-main" id="ed-main">
+    <EditorPane maxBytes={maxBytes} maxLabel={maxLabel} />
+    <OptionsPanel />
+  </div>
+
+  <ResultPanel />
+
+  <Fragment slot="below">
+    <section class="api-strip" id="api">
+      <h2>HTTP API</h2>
+      <pre>{curl}</pre>
+      <ul>
+        <li><b>POST</b> /api/pastes</li>
+        <li><b>GET</b> /api/pastes/:id</li>
+        <li><b>DELETE</b> /api/pastes/:id <span>(Bearer delete token)</span></li>
+        <li><b>GET</b> /raw/:id</li>
+        <li><b>GET</b> /download/:id</li>
+      </ul>
+      <p class="side-hint">
+        Multipart form posts work too — send a <code>file</code> part instead of <code>content</code>.
+        Every response is JSON; errors carry <code>{'{ "error": "…" }'}</code>.
+      </p>
+    </section>
+    <QrModal />
+  </Fragment>
+
+  <script>
+    import '../scripts/editor.ts';
+  </script>
+</Base>

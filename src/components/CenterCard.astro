@@ -1,0 +1,24 @@
+---
+import Icon from './Icon.astro';
+
+interface Props {
+  /** Icon symbol id without the `i-` prefix. */
+  icon: string;
+  /** Card heading. */
+  heading: string;
+  /** Tints the icon plate: accent (default) or danger. */
+  tone?: 'accent' | 'danger';
+}
+
+const { icon, heading, tone = 'accent' } = Astro.props;
+---
+
+<div class="center-main">
+  <div class="card">
+    <div class={tone === 'danger' ? 'card-ic danger' : 'card-ic'}>
+      <Icon name={icon} class="ic-lg" />
+    </div>
+    <h2>{heading}</h2>
+    <slot />
+  </div>
+</div>

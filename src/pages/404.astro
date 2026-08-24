@@ -1,0 +1,23 @@
+---
+export const prerender = false;
+
+import Base from '../layouts/Base.astro';
+import CenterCard from '../components/CenterCard.astro';
+import Icon from '../components/Icon.astro';
+
+Astro.response.status = 404;
+---
+
+<Base title="Not found — edgepaste" description="That page does not exist on edgepaste.">
+  <CenterCard icon="search" heading="Nothing at this address">
+    <p>
+      The page you asked for isn't here. Paste links look like <span class="mono">/p/Vq3xN7pA</span> —
+      eight case-sensitive characters, so a single wrong letter lands you here.
+    </p>
+    <div class="row">
+      <a class="btn btn-primary" href="/"><Icon name="plus" />New paste</a>
+      <a class="btn btn-quiet" href="/recent"><Icon name="clock" />Recent</a>
+    </div>
+    <p class="card-foot">404 · edgepaste</p>
+  </CenterCard>
+</Base>

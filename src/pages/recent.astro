@@ -1,0 +1,80 @@
+---
+export const prerender = false;
+
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import { listPublic } from '../lib/db';
+import { LANGUAGES } from '../lib/validate';
+import { formatBytes, formatCount, humanAge } from '../scripts/format';
+
+const LIMIT = 30;
+const now = Math.floor(Date.now() / 1000);
+
+// Keyset pagination: ?before=<created_at>,<id> — server-side, no client JS.
+const raw = Astro.url.searchParams.get('before');
+let before: { created_at: number; id: string } | undefined;
+if (raw) {
+  const comma = raw.indexOf(',');
+  if (comma > 0) {
+    const createdAt = Number.parseInt(raw.slice(0, comma), 10);
+    const id = raw.slice(comma + 1);
+    if (Number.isFinite(createdAt) && /^[0-9A-Za-z]{1,32}$/.test(id)) {
+      before = { created_at: createdAt, id };
+    }
+  }
+}
+
+const rows = await listPublic(LIMIT, before);
+const last = rows.length === LIMIT ? rows[rows.length - 1] : undefined;
+const olderHref = last ? `/recent?before=${last.created_at},${encodeURIComponent(last.id)}` : null;
+
+const labelFor = (language: string): string =>
+  LANGUAGES.find((l) => l.id === language)?.label ?? language;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+---
+
+<Base
+  title="Recent public pastes — edgepaste"
+  description="The newest public pastes on edgepaste. Unlisted and burn-after-reading pastes never appear here."
+  nav="recent"
+>
+  <div class="rc-main">
+    <h1>Recent public pastes</h1>
+    <p class="rc-sub">Newest first · expired pastes drop out automatically</p>
+
+    {
+      rows.length === 0 ? (
+        <div class="rc-list">
+          <p class="rc-empty">
+            {before
+              ? 'Nothing older to show — you have reached the end of the list.'
+              : 'No public pastes yet. Unlisted and burn-after-reading pastes never appear here, whatever their settings.'}
+          </p>
+        </div>
+      ) : (
+        <div class="rc-list">
+          {rows.map((row) => (
+            <a class="rc-row" href={`/p/${row.id}`}>
+              <span class="rc-title mono">
+                {row.title ? <span>{row.title}</span> : <em>untitled</em>}
+              </span>
+              <span class="chip lang">{labelFor(row.language)}</span>
+              <span class="rc-cell hide-m">{formatBytes(row.size_bytes)}</span>
+              <span class="rc-cell hide-m">{humanAge(row.created_at, now)}</span>
+              <span class="rc-cell views">
+                <Icon name="eye" />
+                {formatCount(row.view_count)}
+              </span>
+            </a>
+          ))}
+        </div>
+      )
+    }
+
+    <div class="rc-more">
+      {olderHref && <a class="btn btn-quiet" href={olderHref}>Load older</a>}
+      {before && <a class="btn btn-quiet" href="/recent">Back to newest</a>}
+    </div>
+  </div>
+</Base>

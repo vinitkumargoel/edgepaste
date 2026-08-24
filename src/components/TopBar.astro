@@ -1,0 +1,31 @@
+---
+import Icon from './Icon.astro';
+
+interface Props {
+  /** Which nav item reads as current. */
+  nav?: 'new' | 'recent' | 'api' | null;
+}
+
+const { nav = null } = Astro.props;
+---
+
+<header class="topbar">
+  <a class="brand" href="/">edgepaste</a>
+  <nav class="topnav" aria-label="Primary">
+    <a class={`nav-a${nav === 'new' ? ' on' : ''}`} href="/" aria-current={nav === 'new' ? 'page' : undefined}>
+      <Icon name="plus" />New
+    </a>
+    <a class={`nav-a${nav === 'recent' ? ' on' : ''}`} href="/recent" aria-current={nav === 'recent' ? 'page' : undefined}>
+      <Icon name="clock" />Recent
+    </a>
+    <a class={`nav-a${nav === 'api' ? ' on' : ''}`} href="/#api">
+      <Icon name="code" />API
+    </a>
+  </nav>
+  <div class="top-actions">
+    <button class="icon-btn theme-btn" type="button" data-theme-toggle aria-label="Toggle dark mode" title="Toggle theme">
+      <Icon name="moon" class="ic-moon" />
+      <Icon name="sun" class="ic-sun" />
+    </button>
+  </div>
+</header>

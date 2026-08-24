@@ -1,0 +1,40 @@
+# edgepaste — pastebin on the edge.
+#
+# `main` points at the custom Worker entry (src/worker.ts) that wraps the Astro
+# handler and adds the `scheduled` cron sweep. `astro build` resolves this config
+# into the build output for `wrangler dev` / `wrangler deploy`.
+#
+# Bindings:
+#   DB     - D1 database (paste metadata + indices)
+#   BUCKET - R2 bucket (paste bodies at pastes/{id}.txt)
+# Secrets (wrangler secret put, or .dev.vars locally):
+#   SESSION_SECRET - HMAC key for password-unlock cookies
+
+name = "edgepaste"
+main = "src/worker.ts"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+routes = [
+  { pattern = "edgepaste.vinitk.dev", custom_domain = true }
+]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "edgepaste"
+database_id = "7481e1c6-ff69-4e8f-9a12-2a52750181a4"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "edgepaste-pastes"
+
+[triggers]
+crons = ["17 3 * * *"] # daily sweep: expired rows + orphaned objects
+
+[vars]
+MAX_PASTE_BYTES = "10485760"
+PUBLIC_ORIGIN = "https://edgepaste.vinitk.dev"
+
+[observability]
+enabled = true
